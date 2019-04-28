@@ -1,1 +1,3 @@
 # UltimateTicTacToeAI
+
+Artificial intelligence project
