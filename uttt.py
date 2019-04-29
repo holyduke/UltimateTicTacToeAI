@@ -169,15 +169,18 @@ def evaluate(state, last_move, player):
 
 def minimax(state, last_move, player, depth, s_time):
     succ = successors(state, player, last_move)
-    best_move = (-inf, None)
-    for s in succ:
-        val = min_turn(s[0], s[1], opponent(player), depth-1, s_time,
-                       -inf, inf)
-        if val > best_move[0]:
-            best_move = (val, s)
-#        print("val = ", val)
-#        print_board(s[0])
-    return best_move[1]
+    if succ is None:    # Konec hry
+        return (state,last_move)
+    else:
+        best_move = (-inf, None)
+        for s in succ:
+            val = min_turn(s[0], s[1], opponent(player), depth-1, s_time,
+                           -inf, inf)
+            if val > best_move[0]:
+                best_move = (val, s)
+    #        print("val = ", val)
+    #        print_board(s[0])
+        return best_move[1]
 
 
 def min_turn(state, last_move, player, depth, s_time, alpha, beta):
@@ -222,35 +225,43 @@ def valid_input(state, move):
 
 
 
-def take_input(state, bot_move):
-    print("#" * 40)
-    all_open_flag = False
-    if bot_move == -1 or len(possible_moves(bot_move)) > 9:
-        all_open_flag = True
-    if all_open_flag:
-        # clear()
-        print("Play anywhere you want!")
-    else:
-        box_dict = {0: "Upper Left", 1: "Upper Center", 2: "Upper Right",
-                    3: "Center Left", 4: "Center", 5: "Center Right",
-                    6: "Bottom Left", 7: "Bottom Center", 8: "Bottom Right"}
-        print("Where would you like to place 'X' in ~"
-              + box_dict[next_box(bot_move)] + "~ box?")
-    x = int(input("Row = "))
-    if x == -1:
-        raise SystemExit
-    y = int(input("Col = "))
-    print("")
-    if bot_move != -1 and index(x, y) not in possible_moves(bot_move):
-        raise ValueError
-    if not valid_input(state, (x, y)):
-        raise ValueError
-    return (x, y)
+# def take_input(state, bot_move):
+#     print("#" * 40)
+#     all_open_flag = False
+#     if bot_move == -1 or len(possible_moves(bot_move)) > 9:
+#         all_open_flag = True
+#     if all_open_flag:
+#         # clear()
+#         print("Play anywhere you want!")
+#     else:
+#         box_dict = {0: "Upper Left", 1: "Upper Center", 2: "Upper Right",
+#                     3: "Center Left", 4: "Center", 5: "Center Right",
+#                     6: "Bottom Left", 7: "Bottom Center", 8: "Bottom Right"}
+#         print("Where would you like to place 'X' in ~"
+#               + box_dict[next_box(bot_move)] + "~ box?")
+#     x = int(input("Row = "))
+#     if x == -1:
+#         raise SystemExit
+#     y = int(input("Col = "))
+#     print("")
+#     if bot_move != -1 and index(x, y) not in possible_moves(bot_move):
+#         raise ValueError
+#     if not valid_input(state, (x, y)):
+#         raise ValueError
+#     return (x, y)
 
-
+def move_cursor(state, pos):
+    user_state = add_piece(state, pos, "_")
+    print_board(user_state)
+    print(pos)
 
 def take_input2(state, bot_move):
     all_open_flag = False
+
+    posx = 1
+    posy = 1
+    move_cursor(state, (posy, posx))
+
     if bot_move == -1 or len(possible_moves(bot_move)) > 9:
         all_open_flag = True
     if all_open_flag:
@@ -263,8 +274,7 @@ def take_input2(state, bot_move):
         print("Where would you like to place 'X' in ~"
               + box_dict[next_box(bot_move)] + "~ box?")
 
-    posx = 1
-    posy = 1
+
     while True:
         key = readchar.readkey()
         if key == '\x1b[C': #doprava
@@ -275,22 +285,37 @@ def take_input2(state, bot_move):
             posy += 1
         elif key == '\x1b[A':  # nahoru
             posy -= 1
-        elif key == '\r':  # enter
-            pass
 
-        user_state = add_piece(state, (posy, posx), "X")
-        print_board(user_state)
+        # Check border positions
+        if posx == 10:
+            posx = 1
+        elif posx == 0:
+            posx = 9
+        elif posy == 10:
+            posy = 1
+        elif posy == 0:
+            posy = 9
 
-    x = int(input("Row = "))
-    if x == -1:
-        raise SystemExit
-    y = int(input("Col = "))
-    print("")
-    if bot_move != -1 and index(x, y) not in possible_moves(bot_move):
+        move_cursor(state, (posy, posx))
+
+        # Enter pressed
+        if key == '\r':  # enter
+            break
+
+    # y = posx
+    # x = posy
+    # print(x,y)
+
+    # x = int(input("Row = "))
+    # if x == -1:
+    #     raise SystemExit
+    # y = int(input("Col = "))
+    # print("")
+    if bot_move != -1 and index(posy, posx) not in possible_moves(bot_move):
         raise ValueError
-    if not valid_input(state, (x, y)):
+    if not valid_input(state, (posy, posx)):
         raise ValueError
-    return (x, y)
+    return (posy, posx)
 
 
 def game(state="." * 81, depth=5):
@@ -299,10 +324,12 @@ def game(state="." * 81, depth=5):
     possible_goals += [(i, i+3, i+6) for i in range(3)]
     possible_goals += [(3*i, 3*i+1, 3*i+2) for i in range(3)]
     box_won = update_box_won(state)
-    print_board(state)
+    # print_board(state)
     bot_move = -1
+    bot_state = 77777777
 
     while True:
+        # PLAYER MOVE
         try:
             user_move = take_input2(state, bot_move)
         except ValueError:
@@ -315,13 +342,15 @@ def game(state="." * 81, depth=5):
 
         user_state = add_piece(state, user_move, "X")
         print_board(user_state)
-        box_won = update_box_won(user_state)
 
+        box_won = update_box_won(user_state)
         game_won = check_small_box(box_won)
         if game_won != ".":
             state = user_state
             break
 
+        # BOT MOVE
+        print(bot_move)
         print("Please wait, Bot is thinking...")
         s_time = time()
         bot_state, bot_move = minimax(user_state, user_move, "O", depth,
@@ -329,7 +358,7 @@ def game(state="." * 81, depth=5):
 
         print("#" * 40)
         print("Bot placed 'O' on", bot_move, "\n")
-        print_board(bot_state)
+        # print_board(bot_state)
         state = bot_state
         box_won = update_box_won(bot_state)
         game_won = check_small_box(box_won)
@@ -345,6 +374,5 @@ def game(state="." * 81, depth=5):
 
 
 if __name__ == "__main__":
-
     INITIAL_STATE = "." * 81
-    final_state = game(INITIAL_STATE, depth=5)
+    final_state = game(INITIAL_STATE, depth=1)
