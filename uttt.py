@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-@author: Pulkit Maloo
-"""
 
-# =============================================================================
-# State is stored as a string where index is at place shown in the board below
-#
 #  --------------------------------
 # |  0  1  2 | 9  10 11 | 18 19 20 |
 # |  3  4  5 | 12 13 14 | 21 22 23 |
@@ -20,8 +14,7 @@
 # | 57 58 59 | 66 67 68 | 75 76 77 |
 # | 60 61 62 | 69 70 71 | 78 79 80 |
 #  --------------------------------
-#
-# =============================================================================
+
 
 from math import inf
 from collections import Counter
@@ -30,6 +23,7 @@ from time import time
 import os
 import readchar
 
+# clear console
 clear = lambda: os.system('cls')
 
 TIME_LIMIT = 5
@@ -74,6 +68,7 @@ def add_piece(state, move, player):
 
 
 def update_box_won(state):
+    # update large total box as a single box
     temp_box_win = ["."] * 9
     for b in range(9):
         idxs_box = indices_of_box(b)
@@ -89,6 +84,19 @@ def check_small_box(box_str):
         if (box_str[x] == box_str[y] == box_str[z]) and box_str[x] != ".":
             return box_str[x]
     return "."
+
+def substitute_box(state):
+    for b in range(9):
+        idxs_box = indices_of_box(b)
+        box_str = state[idxs_box[0]: idxs_box[-1] + 1]
+        won = check_small_box(box_str)
+        if won == "X":
+            state = state[:idxs_box[0]] + "XXXXXXXXX" + state[idxs_box[-1]+1:]
+        elif won == "O":
+            state = state[:idxs_box[0]] + "OOOOOOOOO" + state[idxs_box[-1]+1:]
+    return state
+
+
 
 
 def possible_moves(last_move):
@@ -224,40 +232,14 @@ def valid_input(state, move):
     return True
 
 
-
-# def take_input(state, bot_move):
-#     print("#" * 40)
-#     all_open_flag = False
-#     if bot_move == -1 or len(possible_moves(bot_move)) > 9:
-#         all_open_flag = True
-#     if all_open_flag:
-#         # clear()
-#         print("Play anywhere you want!")
-#     else:
-#         box_dict = {0: "Upper Left", 1: "Upper Center", 2: "Upper Right",
-#                     3: "Center Left", 4: "Center", 5: "Center Right",
-#                     6: "Bottom Left", 7: "Bottom Center", 8: "Bottom Right"}
-#         print("Where would you like to place 'X' in ~"
-#               + box_dict[next_box(bot_move)] + "~ box?")
-#     x = int(input("Row = "))
-#     if x == -1:
-#         raise SystemExit
-#     y = int(input("Col = "))
-#     print("")
-#     if bot_move != -1 and index(x, y) not in possible_moves(bot_move):
-#         raise ValueError
-#     if not valid_input(state, (x, y)):
-#         raise ValueError
-#     return (x, y)
-
 def move_cursor(state, pos):
     user_state = add_piece(state, pos, "_")
     print_board(user_state)
-    print(pos)
+    # print(pos)
+
 
 def take_input2(state, bot_move):
     all_open_flag = False
-
     posx = 1
     posy = 1
     move_cursor(state, (posy, posx))
@@ -274,12 +256,11 @@ def take_input2(state, bot_move):
         print("Where would you like to place 'X' in ~"
               + box_dict[next_box(bot_move)] + "~ box?")
 
-
     while True:
         key = readchar.readkey()
-        if key == '\x1b[C': #doprava
+        if key == '\x1b[C':  # doprava
             posx += 1
-        elif key == '\x1b[D': #doleva
+        elif key == '\x1b[D':  # doleva
             posx -= 1
         elif key == '\x1b[B':  # dolu
             posy += 1
@@ -298,19 +279,22 @@ def take_input2(state, bot_move):
 
         move_cursor(state, (posy, posx))
 
+        if bot_move == -1 or len(possible_moves(bot_move)) > 9:
+            all_open_flag = True
+        if all_open_flag:
+            # clear()
+            print("Play anywhere you want!")
+        else:
+            box_dict = {0: "Upper Left", 1: "Upper Center", 2: "Upper Right",
+                        3: "Center Left", 4: "Center", 5: "Center Right",
+                        6: "Bottom Left", 7: "Bottom Center", 8: "Bottom Right"}
+            print("Where would you like to place 'X' in ~"
+                  + box_dict[next_box(bot_move)] + "~ box?")
+
         # Enter pressed
         if key == '\r':  # enter
             break
 
-    # y = posx
-    # x = posy
-    # print(x,y)
-
-    # x = int(input("Row = "))
-    # if x == -1:
-    #     raise SystemExit
-    # y = int(input("Col = "))
-    # print("")
     if bot_move != -1 and index(posy, posx) not in possible_moves(bot_move):
         raise ValueError
     if not valid_input(state, (posy, posx)):
@@ -326,7 +310,6 @@ def game(state="." * 81, depth=5):
     box_won = update_box_won(state)
     # print_board(state)
     bot_move = -1
-    bot_state = 77777777
 
     while True:
         # PLAYER MOVE
@@ -340,9 +323,14 @@ def game(state="." * 81, depth=5):
             print("Game Stopped!")
             break
 
+        # Update piece
         user_state = add_piece(state, user_move, "X")
+
+        # Substitute matrix if won
+        user_state = substitute_box(user_state)
         print_board(user_state)
 
+        # Check for end game
         box_won = update_box_won(user_state)
         game_won = check_small_box(box_won)
         if game_won != ".":
@@ -350,7 +338,6 @@ def game(state="." * 81, depth=5):
             break
 
         # BOT MOVE
-        print(bot_move)
         print("Please wait, Bot is thinking...")
         s_time = time()
         bot_state, bot_move = minimax(user_state, user_move, "O", depth,
@@ -358,7 +345,10 @@ def game(state="." * 81, depth=5):
 
         print("#" * 40)
         print("Bot placed 'O' on", bot_move, "\n")
-        # print_board(bot_state)
+        bot_state = substitute_box(bot_state)  # substitute if box won
+        print_board(bot_state)
+
+        # Check for end game
         state = bot_state
         box_won = update_box_won(bot_state)
         game_won = check_small_box(box_won)
@@ -375,4 +365,4 @@ def game(state="." * 81, depth=5):
 
 if __name__ == "__main__":
     INITIAL_STATE = "." * 81
-    final_state = game(INITIAL_STATE, depth=1)
+    final_state = game(INITIAL_STATE, depth=5)
