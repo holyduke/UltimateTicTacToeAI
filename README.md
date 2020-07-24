@@ -1,3 +1,3 @@
 # UltimateTicTacToeAI
 
-Artificial intelligence project
+Artificial intelligence project - strategy minimax
